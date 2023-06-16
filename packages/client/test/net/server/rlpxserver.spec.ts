@@ -1,6 +1,6 @@
 import { equalsBytes, hexStringToBytes, utf8ToBytes } from '@ethereumjs/util'
+import { multiaddr } from '@multiformats/multiaddr'
 import { EventEmitter } from 'events'
-import { multiaddr } from 'multiaddr'
 import * as tape from 'tape'
 import * as td from 'testdouble'
 

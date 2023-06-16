@@ -1,4 +1,4 @@
-import { multiaddr } from 'multiaddr'
+import { multiaddr } from '@multiformats/multiaddr'
 import * as tape from 'tape'
 
 import { parseMultiaddrs, parseTransports } from '../../src/util'
