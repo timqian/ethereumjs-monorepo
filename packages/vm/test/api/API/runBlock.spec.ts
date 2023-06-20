@@ -11,18 +11,17 @@ import { Account, Address, KECCAK256_RLP, toBytes } from '@ethereumjs/util'
 import { hexToBytes, utf8ToBytes } from 'ethereum-cryptography/utils'
 import { assert, describe, it } from 'vitest'
 
-import { VM } from '../../src/vm'
-import { getDAOCommon, setupPreConditions } from '../util'
-
-import * as testnet from './testdata/testnet.json'
-import { createAccount, setBalance, setupVM } from './utils'
+import { VM } from '../../../src/vm'
+import { getDAOCommon, setupPreConditions } from '../../util'
+import * as testnet from '../testdata/testnet.json'
+import { createAccount, setBalance, setupVM } from '../utils'
 
 import type {
   AfterBlockEvent,
   PostByzantiumTxReceipt,
   PreByzantiumTxReceipt,
   RunBlockOpts,
-} from '../../src/types'
+} from '../../../src/types'
 import type { TypedTransaction } from '@ethereumjs/tx'
 
 const testData = require('./testdata/blockchain.json')

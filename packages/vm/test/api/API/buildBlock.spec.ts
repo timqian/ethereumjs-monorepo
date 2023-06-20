@@ -6,9 +6,8 @@ import { Account, Address, concatBytesNoTypeCheck } from '@ethereumjs/util'
 import { hexToBytes } from 'ethereum-cryptography/utils'
 import { assert, describe, it } from 'vitest'
 
-import { VM } from '../../src/vm'
-
-import { setBalance } from './utils'
+import { VM } from '../../../src/vm'
+import { setBalance } from '../utils'
 
 describe('BlockBuilder', () => {
   it('should build a valid block', async () => {
