@@ -12,7 +12,7 @@ import {
   getSkipTests,
   getTestDirs,
 } from './config'
-import { runBlockchainTest } from './runners/BlockchainTestsRunner'
+import { getArr, runBlockchainTest } from './runners/BlockchainTestsRunner'
 import { runStateTest } from './runners/GeneralStateTestsRunner'
 import { getTestFromSource, getTestsFromArgs } from './testLoader'
 
@@ -106,6 +106,7 @@ async function runTests() {
     value?: number
     debug?: boolean
     reps?: number
+    testName?: string
   } = {
     forkConfigVM: FORK_CONFIG_VM,
     forkConfigTestSuite: FORK_CONFIG_TEST_SUITE,
@@ -218,6 +219,7 @@ async function runTests() {
       // https://github.com/ethereum/tests/releases/tag/v7.0.0-beta.1
 
       const dirs = getTestDirs(FORK_CONFIG_VM, name)
+      let tests = 0
       for (const dir of dirs) {
         await new Promise<void>((resolve, reject) => {
           if (argv.customTestsPath !== undefined) {
@@ -234,8 +236,13 @@ async function runTests() {
               const inRunSkipped = runSkipped.includes(fileName)
               if (runSkipped.length === 0 || inRunSkipped === true) {
                 testIdentifier = `file: ${subDir} test: ${testName}`
-                t.comment(testIdentifier)
-                await runner(runnerArgs, test, t)
+                runnerArgs.testName = testIdentifier
+                //tests++
+                if (tests > 60) {
+                } else {
+                  t.comment(testIdentifier)
+                  await runner(runnerArgs, test, t)
+                }
               }
             },
             testGetterArgs
@@ -262,6 +269,9 @@ async function runTests() {
         const { assertCount } = t as any
         t.ok(assertCount >= expectedTests, `expected ${expectedTests} checks, got ${assertCount}`)
       }
+
+      let arr = getArr()
+      console.log(JSON.stringify(arr))
 
       t.end()
     })

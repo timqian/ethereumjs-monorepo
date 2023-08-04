@@ -34,6 +34,15 @@ function formatBlockHeader(data: any) {
   return formatted
 }
 
+let arr: any = []
+
+export function getArr() {
+  arr.sort((a: any, b: any) => {
+    return a[1] - b[1]
+  })
+  return arr
+}
+
 export async function runBlockchainTest(options: any, testData: any, t: tape.Test) {
   // ensure that the test data is the right fork data
   if (testData.network !== options.forkConfigTestSuite) {
@@ -113,6 +122,8 @@ export async function runBlockchainTest(options: any, testData: any, t: tape.Tes
   }
 
   let currentBlock = BigInt(0)
+  let timer = 0
+  let gas = 0
   for (const raw of testData.blocks) {
     const paramFork = `expectException${options.forkConfigTestSuite}`
     // Two naming conventions in ethereum/tests to indicate "exception occurs on all HFs" semantics
@@ -197,7 +208,10 @@ export async function runBlockchainTest(options: any, testData: any, t: tape.Tes
           const parentState = parentBlock.header.stateRoot
           // run block, update head if valid
           try {
-            await vm.runBlock({ block, root: parentState, setHardfork: TD })
+            let s = Date.now()
+            const res = await vm.runBlock({ block, root: parentState, setHardfork: TD })
+            timer += Date.now() - s
+            gas += Number(res.gasUsed)
             // set as new head block
           } catch (error: any) {
             // remove invalid block
@@ -239,6 +253,11 @@ export async function runBlockchainTest(options: any, testData: any, t: tape.Tes
     '0x' + testData.lastblockhash,
     'correct last header block'
   )
+
+  let time2 = timer
+  if (gas > 0) {
+    arr.push([options.testName, gas / time2, gas, time2])
+  }
 
   const end = Date.now()
   const timeSpent = `${(end - begin) / 1000} secs`
