@@ -1,14 +1,7 @@
 import { EventEmitter } from 'events'
 
 import type { Config } from '../../config'
-import type {
-  BoundProtocol,
-  EthProtocolMethods,
-  LesProtocolMethods,
-  Protocol,
-  Sender,
-  SnapProtocolMethods,
-} from '../protocol'
+import type { EthProtocol, LesProtocol, Protocol, Sender, SnapProtocol } from '../protocol'
 import type { Server } from '../server'
 
 export interface PeerOptions {
@@ -44,9 +37,7 @@ export class Peer extends EventEmitter {
   public address: string
   public inbound: boolean
   public server: Server | undefined
-  public bound: Map<string, BoundProtocol>
   protected transport: string
-  protected protocols: Protocol[]
   private _idle: boolean
 
   /*
@@ -58,9 +49,9 @@ export class Peer extends EventEmitter {
   public pooled: boolean = false
 
   // Dynamically bound protocol properties
-  public eth: (BoundProtocol & EthProtocolMethods) | undefined
-  public snap: (BoundProtocol & SnapProtocolMethods) | undefined
-  public les: (BoundProtocol & LesProtocolMethods) | undefined
+  public eth: EthProtocol | undefined
+  public snap: SnapProtocol | undefined
+  public les: LesProtocol | undefined
 
   /**
    * Create new peer
@@ -74,8 +65,6 @@ export class Peer extends EventEmitter {
     this.address = options.address
     this.transport = options.transport
     this.inbound = options.inbound ?? false
-    this.protocols = options.protocols ?? []
-    this.bound = new Map()
 
     this._idle = true
   }
@@ -120,7 +109,8 @@ export class Peer extends EventEmitter {
    * ```
    */
   protected async bindProtocol(protocol: Protocol, sender: Sender): Promise<void> {
-    const bound = await protocol.bind(this, sender)
+    switch (protocol.name) {
+    }
     this.bound.set(bound.name, bound)
   }
 
@@ -129,7 +119,16 @@ export class Peer extends EventEmitter {
    * @param protocolName
    */
   understands(protocolName: string): boolean {
-    return !!this.bound.get(protocolName)
+    switch (protocolName) {
+      case 'eth':
+        return this.eth !== undefined
+      case 'les':
+        return this.les !== undefined
+      case 'snap':
+        return this.snap !== undefined
+      default:
+        return false
+    }
   }
 
   /**

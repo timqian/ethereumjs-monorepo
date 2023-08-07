@@ -107,9 +107,10 @@ export class RlpxPeer extends Peer {
       return
     }
     const key = randomBytes(32)
-    await Promise.all(this.protocols.map((p) => p.open()))
+    const protocols = [this.eth, this.les, this.snap].filter((proto) => proto !== undefined)
+    await Promise.all(protocols.map((p) => p!.open()))
     this.rlpx = new Devp2pRLPx(key, {
-      capabilities: RlpxPeer.capabilities(this.protocols),
+      capabilities: RlpxPeer.capabilities(protocols as Protocol[]),
       common: this.config.chainCommon,
     })
     await this.rlpx.connect({
@@ -164,10 +165,11 @@ export class RlpxPeer extends Peer {
     await Promise.all(
       rlpxPeer.getProtocols().map((rlpxProtocol) => {
         const name = rlpxProtocol.constructor.name.toLowerCase()
-        const protocol = this.protocols.find((p) => p.name === name)
+        //@ts-ignore
+        const protocol = this[name] as Protocol
         // Since snap is running atop/besides eth, it doesn't need a separate sender
         // handshake, and can just use the eth handshake
-        if (protocol && name !== 'snap') {
+        if (protocol !== undefined && name !== 'snap') {
           const sender = new RlpxSender(rlpxProtocol as Devp2pETH | Devp2pLES | Devp2pSNAP)
           return this.bindProtocol(protocol, sender).then(() => {
             if (name === 'eth') {

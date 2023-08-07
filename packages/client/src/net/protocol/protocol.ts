@@ -1,9 +1,8 @@
-import { BoundProtocol } from './boundprotocol'
+import { Event } from '../../types'
 
 import type { Config } from '../../config'
 import type { Peer } from '../peer/peer'
 import type { Sender } from './sender'
-
 export interface ProtocolOptions {
   config: Config
 
@@ -38,10 +37,14 @@ export type Message = {
  * Base class for all wire protocols
  * @memberof module:net/protocol
  */
-export class Protocol {
+export abstract class Protocol {
   public config: Config
   public timeout: number
   public opened: boolean
+  protected peer: Peer | undefined
+  private sender: Sender | undefined
+  private _status: any
+  private messageQueue: Message[] = []
 
   /**
    * Create new protocol
@@ -51,6 +54,30 @@ export class Protocol {
     this.timeout = options.timeout ?? 8000
 
     this.opened = false
+    this.peer = options.peer
+    this.sender = options.sender
+    this.timeout = options.timeout ?? 8000
+    this._status = {}
+    this.sender.on('message', (message: any) => {
+      try {
+        if (this.peer.pooled) {
+          this.handle(message)
+        } else {
+          this.messageQueue.push(message)
+          // Expected message queue growth is in the single digits
+          // so this adds a guard here if something goes wrong
+          if (this.messageQueue.length >= 50) {
+            const error = new Error('unexpected message queue growth for peer')
+            this.config.events.emit(Event.PROTOCOL_ERROR, error, this.peer)
+          }
+        }
+      } catch (error: any) {
+        this.config.events.emit(Event.PROTOCOL_ERROR, error, this.peer)
+      }
+    })
+    this.sender.on('error', (error: Error) =>
+      this.config.events.emit(Event.PROTOCOL_ERROR, error, this.peer)
+    )
   }
 
   /**
@@ -147,26 +174,13 @@ export class Protocol {
   }
 
   /**
-   * Binds this protocol to a given peer using the specified sender to handle
-   * message communication.
-   * @param peer peer
-   * @param sender sender
+   * Handle unhandled messages along handshake
    */
-  async bind(peer: Peer, sender: Sender): Promise<BoundProtocol> {
-    const bound = new BoundProtocol({
-      config: this.config,
-      protocol: this,
-      peer,
-      sender,
-    })
-    // Handshake only when snap, else
-    if (this.name !== 'snap') {
-      await bound.handshake(sender)
-    } else {
-      if (sender.status === undefined) throw Error('Snap can only be bound on handshaked peer')
+  handleMessageQueue() {
+    for (const message of this.messageQueue) {
+      this.handle(message)
     }
-    //@ts-ignore TODO: evaluate this line
-    peer[this.name] = bound
-    return bound
   }
+
+  abstract handle(incoming: Message): void
 }

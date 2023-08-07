@@ -19,6 +19,8 @@ import {
 } from '@ethereumjs/util'
 import { encodeReceipt } from '@ethereumjs/vm'
 
+import { Event } from '../../types'
+
 import { Protocol } from './protocol'
 
 import type { Chain } from '../../blockchain'
@@ -69,23 +71,12 @@ type GetReceiptsOpts = {
   hashes: Uint8Array[]
 }
 
-/*
- * Messages with responses that are added as
- * methods in camelCase to BoundProtocol.
- */
-export interface EthProtocolMethods {
-  getBlockHeaders: (opts: GetBlockHeadersOpts) => Promise<[bigint, BlockHeader[]]>
-  getBlockBodies: (opts: GetBlockBodiesOpts) => Promise<[bigint, BlockBodyBytes[]]>
-  getPooledTransactions: (opts: GetPooledTransactionsOpts) => Promise<[bigint, TypedTransaction[]]>
-  getReceipts: (opts: GetReceiptsOpts) => Promise<[bigint, TxReceipt[]]>
-}
-
 function exhaustiveTypeGuard(_value: never, errorMsg: string): never {
   throw new Error(errorMsg)
 }
 
 /**
- * Implements eth/66 protocol
+ * Implements eth protocol (versions 66 - 68)
  * @memberof module:net/protocol
  */
 export class EthProtocol extends Protocol {
@@ -417,6 +408,49 @@ export class EthProtocol extends Protocol {
       td: bytesToBigInt(status.td),
       bestHash: status.bestHash,
       genesisHash: status.genesisHash,
+    }
+  }
+
+  /**
+   * Handle incoming message
+   * @param message message object
+   * @emits {@link Event.PROTOCOL_MESSAGE}
+   * @emits {@link Event.PROTOCOL_ERROR}
+   */
+  handle(incoming: Message) {
+    const messages = this.messages
+    const message = messages.find((m) => m.code === incoming.code)
+    if (!message) {
+      return
+    }
+
+    let data
+    let error
+    try {
+      data = this.decode(message, incoming.payload)
+    } catch (e: any) {
+      error = new Error(`Could not decode message ${message.name}: ${e}`)
+    }
+    const resolver = this.resolvers.get(incoming.code)
+    if (resolver !== undefined) {
+      clearTimeout(resolver.timeout)
+      this.resolvers.delete(incoming.code)
+      if (error) {
+        resolver.reject(error)
+      } else {
+        resolver.resolve(data)
+      }
+    } else {
+      if (error) {
+        this.config.events.emit(Event.PROTOCOL_ERROR, error, this.peer)
+      } else {
+        this.config.events.emit(
+          Event.PROTOCOL_MESSAGE,
+          { name: message.name, data },
+          this.name,
+          this.peer
+        )
+      }
     }
   }
 }
