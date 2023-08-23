@@ -612,8 +612,11 @@ export class VMExecution extends Execution {
   async executeBlocks(first: number, last: number, txHashes: string[]) {
     this.config.logger.info('Preparing for block execution (debug mode, no services started)...')
     const vm = await this.vm.shallowCopy()
-
+    const start = Date.now()
+    let gas = BigInt(0)
+    let blocks = 0
     for (let blockNumber = first; blockNumber <= last; blockNumber++) {
+      blocks++
       const block = await vm.blockchain.getBlock(blockNumber)
       const parentBlock = await vm.blockchain.getBlock(block.header.parentHash)
       // Set the correct state root
@@ -639,6 +642,7 @@ export class VMExecution extends Execution {
           clearCache: false,
           skipHeaderValidation: true,
         })
+        gas += block.header.gasUsed
         const afterTS = Date.now()
         const diffSec = Math.round((afterTS - beforeTS) / 1000)
         const msg = `Executed block num=${blockNumber} hash=${bytesToHex(block.hash())} txs=${
@@ -673,6 +677,16 @@ export class VMExecution extends Execution {
         }
       }
     }
+    const time = (Date.now() - start) / 1000
+    const target = 30000000
+    const mgasPerS = Number(gas) / 1000000 / time
+    const timeForTarget = target / (mgasPerS * 1000000)
+
+    console.log(
+      `Took ${time}s to execute ${blocks} blocks, spending ${Number(
+        gas
+      )} gas, execution speed: ${mgasPerS} mgas/s. To execute ${target} gas, this takes ${timeForTarget}s`
+    )
   }
 
   stats(vm: VM) {
